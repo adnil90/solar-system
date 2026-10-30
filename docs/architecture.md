@@ -387,15 +387,16 @@ The labels are short forms of the rules under [Time](#time).
 | Topic | Choice |
 |---|---|
 | Folders | `src/core` (core), `src/app` (frame loop, Clock, wiring), `src/render` (renderer), `src/ui` (HTML controls and labels), `src/config` (config constants), `data/` (body data as TypeScript modules) (default) |
-| Entry | `index.html` at the repo root loads `<script type="module" src="/src/main.ts">`. Phase 0 creates it as a minimal page with that script only; phase 1 adds the canvas and the controls. `src/main.ts` wires the App (default) |
+| Entry | `index.html` at the repo root loads `<script type="module" src="/src/main.ts">`. Phase 0 creates it as a minimal page with that script only, and `src/main.ts` holds the single line `document.body.textContent = 'solar-system';` so the built page shows text; phase 1 adds the canvas and the controls. From phase 1, `src/main.ts` wires the App (default) |
 | Tests | Co-located with their source as `*.test.ts`. Vitest runs every test in the `node` environment (default): the clock, date text, core and scale function tests need no DOM, and `OrbitControls` runs without one ([Tooling](data.md#tooling)) |
 | Vite | `vite.config.ts` holds `base` `'/solar-system/'` ([Vite base](deploy.md#vite-base)) and the Vitest config as its `test` block (default) |
 | TypeScript | TypeScript 7.0.2, fallback TypeScript 6 ([data.md](data.md#tooling)). `tsconfig.json`: `strict` true, `noEmit` true, `target` `ES2022`, `module` `ESNext`, `moduleResolution` `bundler`, `include` `["src", "data"]`, `skipLibCheck` false (default). If @types/three needs `skipLibCheck` true, phase 0 records that as a finding in [Tooling](data.md#tooling) |
-| Format | Prettier 3.9.10 ([data.md](data.md#tooling)), `.prettierrc` committed |
+| Format | Prettier 3.9.10 ([data.md](data.md#tooling)), `.prettierrc` committed and containing `{}`, so Prettier's defaults apply |
 | npm scripts | `dev` runs `vite`, `build` runs `vite build`, `preview` runs `vite preview`, `test` runs `vitest run`, `typecheck` runs `tsc --noEmit`, `format` runs `prettier --write .`, `format:check` runs `prettier --check .` ([data.md](data.md#tooling)) (default) |
 | Package manager | npm, lockfile committed |
+| package.json | `name` `solar-system`, `private` true, `type` `module`, `version` `0.0.0`, `license` `MIT` (default). `three` is the only entry under `dependencies`, as the Three.js installation guide installs it with `--save`; every other package, `@types/three` included, is under `devDependencies` |
 | Node | `.nvmrc` holds `24` (default). Every Node 24.x lies inside the combined Node range under [Tooling](data.md#tooling) (DERIVED). In CI, `actions/setup-node` reads it with `node-version-file: .nvmrc` and caches npm with `cache: npm` (default); both inputs are VERIFIED (v7.1.0 source, https://raw.githubusercontent.com/actions/setup-node/v7.1.0/action.yml) |
-| Ignored files | `.gitignore` lists `node_modules` and `dist` (default). Prettier skips them, as it reads `.gitignore` ([data.md](data.md#tooling)). `.prettierignore` lists `docs/` and `README.md` (default), so `format:check` covers code and config only |
+| Ignored files | `.gitignore` lists `node_modules`, `dist` and `.DS_Store` (default). Prettier skips them, as it reads `.gitignore` ([data.md](data.md#tooling)). `.prettierignore` lists `docs/` and `README.md` (default), so `format:check` covers code and config only |
 | Look | No starfield. The colours are config constants in `src/config`: `BACKGROUND_COLOR` black, `BODY_COLORS` for the spheres, keyed by `id` (`sun` `#FFD84D`, `mercury` `#D0CAC6`), `SPOT_COLOR` `#466E37` for the spot marker, `AXIS_COLOR` `#7350B4` for the axis line (default) |
 | CI | GitHub Actions, as under [Flow](deploy.md#flow) |
 | Licence | MIT. Three.js is also MIT ([data.md](data.md#tooling)) |

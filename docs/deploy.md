@@ -49,8 +49,11 @@ The Vite `base` must equal the repository name exactly, between slashes.
 | Workflow file | `.github/workflows/deploy.yml` | https://vite.dev/guide/static-deploy#github-pages | VERIFIED |
 | Trigger | push to `main`, plus manual dispatch (`workflow_dispatch`) | https://vite.dev/guide/static-deploy#github-pages | VERIFIED |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | https://vite.dev/guide/static-deploy#github-pages, https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages | VERIFIED |
-| Concurrency | group `pages` | https://vite.dev/guide/static-deploy#github-pages | VERIFIED |
-| Build output | static, `dist/` | https://vite.dev/guide/static-deploy#github-pages | VERIFIED |
+| Concurrency | group `pages`, `cancel-in-progress: false`, as in the GitHub starter workflow, whose comment says production deployments are allowed to complete (Vite's sample has `true`) | https://vite.dev/guide/static-deploy#github-pages, https://raw.githubusercontent.com/actions/starter-workflows/main/pages/static.yml, read 2026-10-29 | VERIFIED |
+| Job | one job, `deploy`, running every step in [Flow](#flow) | https://vite.dev/guide/static-deploy#github-pages, https://raw.githubusercontent.com/actions/starter-workflows/main/pages/static.yml, read 2026-10-29 | VERIFIED |
+| Runner | `runs-on: ubuntu-latest` | https://vite.dev/guide/static-deploy#github-pages, https://raw.githubusercontent.com/actions/starter-workflows/main/pages/static.yml, read 2026-10-29 | VERIFIED |
+| Environment | `name: github-pages`, `url: ${{ steps.deployment.outputs.page_url }}` | https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages, https://raw.githubusercontent.com/actions/starter-workflows/main/pages/static.yml, read 2026-10-29 | VERIFIED |
+| Build output | static, `dist/`; the upload step sets `path: './dist'`, as the action's default is `_site/` | https://vite.dev/guide/static-deploy#github-pages, https://github.com/actions/upload-pages-artifact (`action.yml` v5.0.0), read 2026-10-29 | VERIFIED |
 
 ## Action versions
 
@@ -83,9 +86,3 @@ Source: https://docs.github.com/en/pages/getting-started-with-github-pages/githu
 - GitHub Pages works for a public repository on GitHub Free: "GitHub Pages is available in public repositories with GitHub Free and GitHub Free for organizations, and in public and private repositories with GitHub Pro, GitHub Team, GitHub Enterprise Cloud, and GitHub Enterprise Server." https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site, read 2026-10-28. VERIFIED.
 - On GitHub Free and GitHub Free for organizations the repository must be public: "If the account that owns the repository uses GitHub Free or GitHub Free for organizations, the repository must be public." https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site. VERIFIED.
 - Consequence: on GitHub Free the repository is public, so it holds no secrets. DERIVED.
-
-## Approval
-
-Creating the GitHub repository `solar-system`, enabling Pages and the first push are outward-facing steps. Each needs the user's approval. The user creates the repository.
-
-The workflow is written but not activated: the file exists in the repo. No remote is added to the local project and nothing is pushed until the user approves.

@@ -23,4 +23,4 @@ TypeScript, Three.js, Vite, Vitest (no UI framework)
 - [Architecture](docs/architecture.md): goals, invariants, structure, one tick, scene graph, frame, core API, scale, view, time, layout and tooling
 - [Phases](docs/phases.md): build order, invariants, stop conditions, risks
 - [Data](docs/data.md): every value with its source, contradictions, tooling
-- [Deploy](docs/deploy.md): GitHub Pages via GitHub Actions, limits, plans, approval steps
+- [Deploy](docs/deploy.md): GitHub Pages via GitHub Actions, limits, plans
