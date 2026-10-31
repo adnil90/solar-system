@@ -2,12 +2,10 @@
 
 ## Goals and constraints
 
-Goals:
+Goals ([README](../README.md) states the purpose):
 
-- Show the Sun and the planets as unlit coloured spheres on black, moving in fixed hourly steps.
 - Place and orient each body from real data: JPL Keplerian elements for position, IAU pole and prime meridian for orientation.
 - Build phase by phase, each phase green ([phases.md](phases.md)).
-- Serve as groundwork for a space game and for showing the solar system to a child.
 
 Constraints:
 
@@ -181,7 +179,7 @@ The renderer computes Q each frame from `poleEcliptic` and eps ([Frame](#frame))
 - The renderer maps ecliptic (x, y, z) to Three.js (X, Y, Z) = (x, z, -y), so Three.js Y points to ecliptic north (default). The mapping is a proper rotation, determinant +1 (DERIVED). The phase 0 handedness test checks that under Three.js `Vector3.cross` ([Phase 0 exit](phases.md#phase-0-exit)); phase 2 exit test 1 pins the renderer's mapping ([Phase 2 exit](phases.md#phase-2-exit)).
 - Positive W is counter-clockwise rotation seen from the north pole.
 - W is measured from the node Q, the ascending node of the body's equator on the ICRF equator, at the pole's RA + 90 deg, Dec 0 ([data.md](data.md#prime-meridian-origin)). The prime meridian, longitude 0, lies at Q turned about the pole by W.
-- The obliquity eps = 23.43928 deg is the core constant `OBLIQUITY_J2000_DEG` ([Core API](#core-api), source in [data.md](data.md#mercury-orientation)). The core's pole conversion uses it; the renderer imports it from the core for Q and keeps no copy of its own. The ICRF north pole in this frame is n = (0, sin eps, cos eps).
+- The obliquity eps is the core constant `OBLIQUITY_J2000_DEG` ([Core API](#core-api)); value and source under [Mercury orientation](data.md#mercury-orientation). The core's pole conversion uses it; the renderer imports it from the core for Q and keeps no copy of its own. The ICRF north pole in this frame is n = (0, sin eps, cos eps).
 - In this frame, Q is the normalised cross product n x `poleEcliptic`; the renderer maps Q to Three.js axes like every other vector. Why: n x pole is perpendicular to both poles, so it lies on both equators, and in ICRF coordinates it is cos(Dec) (cos(RA + 90 deg), sin(RA + 90 deg), 0), which points along Q while |Dec| < 90 deg; the ICRF-to-ecliptic rotation keeps cross products, so Q needs only `poleEcliptic` and eps, not RA (DERIVED). The Sun and Mercury have |Dec| < 90 deg.
 
 ## Core API
@@ -211,10 +209,10 @@ JD_MIN, JD_MAX, OBLIQUITY_J2000_DEG
 | `stateAt` | `BodyState` of `body` at `jdTdb`; its `poleEcliptic` and `primeMeridianDeg` equal the result of `orientationAt`. Precondition: `JD_MIN <= jdTdb <= JD_MAX`. Before phase 5 it throws an `Error` for a body with a non-null `orbit` |
 | `orientationAt` | The pole of `body` at `jdTdb` as a unit vector, `poleEcliptic`, and W in degrees, `primeMeridianDeg`; defined for every body |
 | `semiMajorAxisKm` | Semi-major axis of `orbit` in km: `orbit.a.value` (AU, a at T = 0) x 149,597,870.7 km/AU ([data.md](data.md#mercury-orbit)) |
-| `jdFromDate` | Julian date of a `Date` |
-| `jdAtStep` | `startJd` + n x 1 h, as Julian date |
+| `jdFromDate` | `date.getTime() / 86400000 + 2440587.5`, the Julian date of the instant, independent of the time zone |
+| `jdAtStep` | `startJd + n / 24` |
 | `JD_MIN`, `JD_MAX` | The bounds under [Time](#time). Constants in the core: a property of the JPL Table 1 data |
-| `OBLIQUITY_J2000_DEG` | The obliquity eps under [Frame](#frame), 23.43928 deg |
+| `OBLIQUITY_J2000_DEG` | The obliquity eps under [Frame](#frame) |
 
 Rules:
 
@@ -333,6 +331,7 @@ The camera is not keyboard-controlled. There are no screen-reader announcements 
 - Initial play state: Paused (default). Play and Pause switch between Paused and Playing ([Clock states](#clock-states)). Pause sets the remainder to 0 (default).
 - Any change of the speed resets the remainder to 0 and keeps Playing or Paused (default).
 - Speed 0 takes no steps. Play at speed 0 does nothing: the clock stays Paused (default).
+- Non-finite input: `update`, `setSpeed` and `jump` given `NaN` or an infinite number leave the clock unchanged, and `update` returns 0. A negative `elapsedSeconds` is treated as 0 (default). `createClock` given a non-finite `startJd` or `speedStepsPerSecond` throws a `RangeError` (default).
 - Sim time = start + n x 1 h, as Julian date TDB. The start Julian date is a parameter. Orientation uses d = JD - 2451545.0 (days past J2000 TDB) and T = d / 36525.
 - Rounding: `createClock` and `jump` round the Julian date jd they receive to `Math.round(jd * 24) / 24`, the nearest whole hour, a half hour rounding up: `14:29` gives 14:00 and `14:30` gives 15:00 (default). This rounds a Julian date to a Julian date, deliberately unlike the hour count `formatDateText` rounds before converting to ms (Date text rounding): `jdFromDate` of `2026-10-27 14:30` UTC lies 1.55e-10 d below the half hour, so rounding its hour count gives 14:00 and fails [phase 0 exit](phases.md#phase-0-exit) test 3 (DERIVED).
 - Default start: the current date, converted from `Date` to a Julian date, rounded to a whole hour and clamped into the bounds.
@@ -341,7 +340,7 @@ The camera is not keyboard-controlled. There are no screen-reader announcements 
 - Jump to date: the user enters a date text. `parseDateText` converts it to a Julian date, and `jump` rounds that to a whole hour, clamps it to `JD_MIN`..`JD_MAX`, sets the result as the new start Julian date and resets n to 0. Playing or Paused is kept and the remainder is set to 0 (default). Sim time stays start + n x 1 h, a pure function of the start Julian date and the step counter ([invariant 3](#invariants)).
 - Bounds: the first allowed instant is 1800-01-01 00:00 and the last is 2050-12-31 23:00 (default). The last bound reads the JPL Table 1 validity range "1800 AD - 2050 AD" as including all of 2050 (interpretation). The bounds are the core constants `JD_MIN` and `JD_MAX`.
 - The clock (App) enforces the bounds. It clamps a new start Julian date to `JD_MIN`..`JD_MAX`, and it clamps n to n_min..n_max, with n_max = round((`JD_MAX` - start) x 24) and n_min = round((`JD_MIN` - start) x 24), where start is the start Julian date. "At a bound" means n equals n_min or n_max. The clock compares step indices, not Julian dates, because start + n_max / 24 can lie 1 ulp below `JD_MAX` for a whole-hour start (DERIVED). The UI shows the range as `1800-01-01 00:00` to `2050-12-31 23:00` in the date text format, with the label `UTC`.
-- Reaching a bound: when the whole steps of a frame take n to or past n_max or n_min, also when running backwards, n becomes that bound, the clock switches to Paused and the remainder is set to 0 (default).
+- Reaching a bound: when the whole steps of a frame are positive and n plus them reaches or passes n_max, or negative and n plus them reaches or passes n_min, n becomes that bound, the clock switches to Paused and the remainder is set to 0 (default). This includes a clock already at that bound after `jump` or `setSpeed` while Playing. A frame whose whole steps are 0 never pauses.
 - Play at a bound: a speed that points back into the range, negative at n_max or positive at n_min, runs the clock; a speed that points further out leaves it Paused (default).
 - Positions are analytic functions of time: set n, get the state, and nothing accumulates. Reverse and jump to date rest on this. Scrubbing is not a delivered feature.
 - The TDB-UTC difference of about 1 min is ignored at hourly resolution.
@@ -390,10 +389,10 @@ The labels are short forms of the rules under [Time](#time).
 | Entry | `index.html` at the repo root loads `<script type="module" src="/src/main.ts">`. Phase 0 creates it as a minimal page with that script only, and `src/main.ts` holds the single line `document.body.textContent = 'solar-system';` so the built page shows text; phase 1 adds the canvas and the controls. From phase 1, `src/main.ts` wires the App (default) |
 | Tests | Co-located with their source as `*.test.ts`. Vitest runs every test in the `node` environment (default): the clock, date text, core and scale function tests need no DOM, and `OrbitControls` runs without one ([Tooling](data.md#tooling)) |
 | Vite | `vite.config.ts` holds `base` `'/solar-system/'` ([Vite base](deploy.md#vite-base)) and the Vitest config as its `test` block (default) |
-| TypeScript | TypeScript 7.0.2, fallback TypeScript 6 ([data.md](data.md#tooling)). `tsconfig.json`: `strict` true, `noEmit` true, `target` `ES2022`, `module` `ESNext`, `moduleResolution` `bundler`, `include` `["src", "data"]`, `skipLibCheck` false (default). If @types/three needs `skipLibCheck` true, phase 0 records that as a finding in [Tooling](data.md#tooling) |
-| Format | Prettier 3.9.10 ([data.md](data.md#tooling)), `.prettierrc` committed and containing `{}`, so Prettier's defaults apply |
-| npm scripts | `dev` runs `vite`, `build` runs `vite build`, `preview` runs `vite preview`, `test` runs `vitest run`, `typecheck` runs `tsc --noEmit`, `format` runs `prettier --write .`, `format:check` runs `prettier --check .` ([data.md](data.md#tooling)) (default) |
-| Package manager | npm, lockfile committed |
+| TypeScript | TypeScript, version under [Tooling](data.md#tooling), fallback under [Phase 0 content](phases.md#phase-0-content). `tsconfig.json`: `strict` true, `noEmit` true, `target` `ES2022`, `module` `ESNext`, `moduleResolution` `bundler`, `include` `["src", "data"]`, `skipLibCheck` as the typecheck run in phase 0 settles (starts `false`) |
+| Format | Prettier ([Tooling](data.md#tooling)), `.prettierrc` committed and containing `{}`, so Prettier's defaults apply |
+| npm scripts | `dev` runs `vite`, `build` runs `vite build`, `preview` runs `vite preview`, `test` runs `TZ=Asia/Kolkata vitest run`, so the date tests run in a zone that is never UTC, `typecheck` runs `tsc --noEmit`, `format` runs `prettier --write .`, `format:check` runs `prettier --check .` ([data.md](data.md#tooling)) (default) |
+| Package manager | npm. `package-lock.json` is committed and fixes the installed versions; `package.json` keeps npm's default `^` ranges |
 | package.json | `name` `solar-system`, `private` true, `type` `module`, `version` `0.0.0`, `license` `MIT` (default). `three` is the only entry under `dependencies`, as the Three.js installation guide installs it with `--save`; every other package, `@types/three` included, is under `devDependencies` |
 | Node | `.nvmrc` holds `24` (default). Every Node 24.x lies inside the combined Node range under [Tooling](data.md#tooling) (DERIVED). In CI, `actions/setup-node` reads it with `node-version-file: .nvmrc` and caches npm with `cache: npm` (default); both inputs are VERIFIED (v7.1.0 source, https://raw.githubusercontent.com/actions/setup-node/v7.1.0/action.yml) |
 | Ignored files | `.gitignore` lists `node_modules`, `dist` and `.DS_Store` (default). Prettier skips them, as it reads `.gitignore` ([data.md](data.md#tooling)). `.prettierignore` lists `docs/` and `README.md` (default), so `format:check` covers code and config only |

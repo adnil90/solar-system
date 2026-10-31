@@ -130,7 +130,7 @@ Status: VERIFIED (NAIF PCK Required Reading, https://naif.jpl.nasa.gov/pub/naif/
 
 ## Tooling
 
-All from the npm registry, checked 2026-10-13 (prettier 2026-10-25).
+All from the npm registry, checked 2026-10-13 unless a row gives a later read date.
 
 | Package | Version | Notes | Source |
 |---|---|---|---|
@@ -161,7 +161,6 @@ All from the npm registry, checked 2026-10-13 (prettier 2026-10-25).
   - It holds while the distance lies within `minDistance`..`maxDistance` (`_clampDistance`), with the default polar and azimuth limits, the default `minTargetRadius` and `maxTargetRadius`, and damping off; with damping on, leftover rotation continues.
   - It also needs an offset off the up axis: `update()` calls `this._spherical.makeSafe();`, which clamps the polar angle `phi` with `const EPS = 0.000001;` and `this.phi = clamp( this.phi, EPS, Math.PI - EPS );`, so the camera shifts slightly when the offset lies along the up axis.
 - `OrbitControls` r186 needs no DOM element to be constructed or updated. Its constructor is `constructor( object, domElement = null )`; it calls `this.connect( this.domElement )` only `if ( this.domElement !== null )`, then `this.update()`. `update( deltaTime = null )` reads `this.object.position`, `this.target`, `this.cursor` and the controls' own settings and state, sets `this.object.position` and calls `this.object.lookAt( this.target )`; it reads none of `this.domElement`, `document` and `window`. VERIFIED (three 0.186.1 registry tarball, https://registry.npmjs.org/three/-/three-0.186.1.tgz, `examples/jsm/controls/OrbitControls.js`, `src/extras/Controls.js`). The phase 1 `node` tests construct it without a `domElement` ([Phase 1 exit](phases.md#phase-1-exit)).
-- Local machine: Node is not installed on the machine, observed 2026-10-28: `node --version` and `npm --version` returned "command not found".
 
 ## Colours
 

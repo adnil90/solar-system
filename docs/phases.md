@@ -19,7 +19,7 @@ The gate is the four commands the CI workflow runs after `npm ci`: `npm run form
 
 ### Phase 0 content
 
-- Node ([Tooling](data.md#tooling)); installing it is an external dependency that needs the user's approval.
+- Node, the version in `.nvmrc` ([Layout and tooling](architecture.md#layout-and-tooling)); it is an external dependency that needs the user's approval.
 - Vite, TypeScript, Three.js, Vitest and Prettier, with the npm scripts, config files and entry files under [Layout and tooling](architecture.md#layout-and-tooling), `.prettierignore` included; `index.html` is a minimal page.
 - Clock logic and date text only, with no HTML controls ([Time](architecture.md#time)):
   - fixed 1 h step
@@ -35,40 +35,38 @@ The gate is the four commands the CI workflow runs after `npm ci`: `npm run form
   - `src/app/clock.ts` holds `createClock`
   - `src/app/dateText.ts` holds `parseDateText` and `formatDateText`
   - `src/config/index.ts` holds `INITIAL_SPEED_STEPS_PER_S`
-- Run `npm run typecheck` with typescript 7.0.2, @types/three 0.186.0 and three 0.186.1 to check that TypeScript 7 works with @types/three (fallback TypeScript 6).
+- Run `npm run typecheck` with typescript 7.0.2, @types/three 0.186.0 and three 0.186.1. If it fails in the declarations of @types/three, try in this order and keep the first that passes: `skipLibCheck` true under TypeScript 7, then the latest TypeScript 6.x with `skipLibCheck` false, then with true. Record the choice under [Tooling](data.md#tooling). If every step fails, or the failure is in the declarations of any other package, stop (see [Stop conditions](#stop-conditions)).
 - Handedness test of the axis mapping under Three.js `Vector3.cross`, in `src/render/handedness.test.ts`, which defines the mapping locally as the renderer does not exist yet ([Phase 0 exit](#phase-0-exit)).
 - GitHub Actions workflow that runs the gate and deploys the built minimal page ([deploy.md](deploy.md)).
 - The `Status` line in `README.md` says phase 0 is done, as the code now exists.
-- LICENSE file with the MIT licence text as published by the Open Source Initiative and the copyright line `Copyright (c) 2026 Linda Gustafsson`; `license` field `MIT` in package.json.
+- LICENSE file with the standard MIT licence text and the copyright line `Copyright (c) 2026 Linda Gustafsson`; `license` field `MIT` in package.json.
 
 ### Phase 0 exit
 
-Unit tests, then file checks. In the unit tests, expected values are fixed numbers in the tests, not the code's own formula. The clock tests use the calls under [Clock API](architecture.md#clock-api); "at speed s" means `createClock(2451545.0, s)` followed by `play()`.
+Unit tests, then the workflow check. In the unit tests, expected values are fixed numbers in the tests, not the code's own formula. The clock tests use the calls under [Clock API](architecture.md#clock-api); "at speed s" means `createClock(2451545.0, s)` followed by `play()`.
 
 1. `JD_MIN` = 2378496.5 and `JD_MAX` = 2470172.4583333333 (59284139/24), each within 1e-9 d.
 2. `jdAtStep(2451545.0, 1) - jdAtStep(2451545.0, 0)` = 1/24 d within 1e-9 d.
-3. `jump` rounds by the rounding rule under [Time](architecture.md#time): at speed 1, `jump(jdFromDate(date))` for `2026-10-27 14:29` UTC gives `jd` 2461341.0833333333 (14:00), and for `2026-10-27 14:30` UTC 2461341.125 (15:00), each within 1e-9 d.
-4. `createClock(2451545.0, INITIAL_SPEED_STEPS_PER_S)` has `state` `'Paused'`; after `play()`, `update(0.5)` returns exactly 12 and `n` is 12.
+3. `jump` rounds by the rounding rule under [Time](architecture.md#time): at speed 1, `jump(jdFromDate(date))` for `new Date(Date.UTC(2026, 9, 27, 14, 29))` gives `jd` 2461341.0833333333 (14:00), and for `new Date(Date.UTC(2026, 9, 27, 14, 30))` 2461341.125 (15:00), each within 1e-9 d.
+4. `INITIAL_SPEED_STEPS_PER_S` is 24, asserted in `src/config/index.test.ts`. `createClock(2451545.0, INITIAL_SPEED_STEPS_PER_S)` has `state` `'Paused'`; after `play()`, `update(0.5)` returns exactly 12 and `n` is 12.
 5. A negative speed counts n down, and whole steps are truncated toward zero: at speed 1, three calls of `update(0.4)` return 0, 0 and 1, with `remainder` 0.2 within 1e-9 after; at speed -1 they return 0, 0 and -1.
 6. `update` never returns -0: at speed -1, `update(0.4)` returns `steps` with `Object.is(steps, 0)` true.
 7. Bound at `JD_MAX`: `createClock(2470172.375, 24)` (`JD_MAX` - 2/24), `play()`, then `update(1)` returns 2, `n` is 2 (n_max), `state` is `'Paused'` and `remainder` is 0.
 8. Bound at `JD_MIN`, mirrored: `createClock(2378496.5833333333, -24)` (`JD_MIN` + 2/24), `play()`, then `update(1)` returns -2, `n` is -2 (n_min), `state` is `'Paused'` and `remainder` is 0.
 9. The bound is a step index, not a Julian date: `createClock(2470172.4166666665, 24)` (59284138/24, `JD_MAX` - 1/24), `play()`, then `update(1)` returns 1, `n` is 1 (n_max), `state` is `'Paused'` and `jd` equals exactly 2470172.458333333, the double one ulp below `JD_MAX`, as `jdAtStep` gives start + n/24. A further `play()` leaves `state` `'Paused'`.
-10. At a bound the fraction is dropped: `createClock(2470172.375, 20)`, `play()`, `update(0.125)` (2.5 steps, the whole steps reach n_max) and `createClock(2470172.375, 24)`, `play()`, `update(0.1875)` (4.5 steps, past n_max) each return 2 and leave `n` 2, `state` `'Paused'` and `remainder` 0. Reaching n_max exactly pauses too: `createClock(2470172.4166666665, 1)`, `play()`, `update(1)` returns 1, `n` is 1, `state` is `'Paused'` and `remainder` is 0.
+10. At a bound the fraction is dropped: `createClock(2470172.375, 20)`, `play()`, `update(0.125)` (2.5 steps, the whole steps reach n_max) and `createClock(2470172.375, 24)`, `play()`, `update(0.1875)` (4.5 steps, past n_max) each return 2 and leave `n` 2, `state` `'Paused'` and `remainder` 0. Reaching n_max exactly pauses too: `createClock(2470172.4166666665, 1)`, `play()`, `update(1)` returns 1, `n` is 1, `state` is `'Paused'` and `remainder` is 0. Play at a bound runs back into the range: `createClock(2470172.4583333333, -1)` (`JD_MAX`), `play()`, `update(0.5)` returns 0 and `state` stays `'Playing'`, then `update(0.5)` returns -1 and `n` is -1. Mirrored: `createClock(2378496.5, 1)` (`JD_MIN`), `play()`, `update(0.5)` returns 0 with `state` `'Playing'`, then `update(0.5)` returns 1. A clock already at a bound with the speed pointing out pauses: `createClock(2470172.4583333333, 1)` (`JD_MAX`), `play()`, `update(1)` returns 0, `n` is 0, `state` is `'Paused'` and `remainder` is 0; mirrored, `createClock(2378496.5, -1)` (`JD_MIN`), `play()`, `update(1)` gives the same.
 11. `jump` sets the start Julian date and n = 0 and keeps the state: at speed 1, after `update(2)`, `jump(2461341.0833333333)` gives `jd` 2461341.0833333333 within 1e-9 d, `n` 0 and `state` `'Playing'`; on `createClock(2451545.0, 1)` without `play()`, the same jump keeps `state` `'Paused'`.
 12. `createClock` rounds and clamps its start as `jump` does: `createClock(JD_MIN - 1, 24)` has `jd` 2378496.5 (`JD_MIN`) and `n` 0; `createClock(2461341.0833333333 + 0.01, 24)` (14:14:24 UTC) has `jd` 2461341.0833333333 (14:00) and `createClock(2461341.0833333333 + 0.03, 24)` (14:43:12 UTC) has `jd` 2461341.125 (15:00); each `jd` within 1e-9 d.
 13. `jump` clamps to the bounds and keeps the state: at speed 1, `jump(JD_MAX + 5)` gives `jd` 2470172.4583333333 (`JD_MAX`), `n` 0 and `state` `'Playing'`, and `jump(JD_MIN - 5)` gives `jd` 2378496.5 (`JD_MIN`), `n` 0 and `state` `'Playing'`; each `jd` within 1e-9 d.
 14. `pause` resets the remainder: at speed 1, `update(0.6)` returns 0; after `pause()` and `play()`, `update(0.6)` returns 0.
 15. `jump` resets the remainder: at speed 1, `update(0.6)` returns 0; after `jump(2451545.0)`, `update(0.6)` returns 0.
 16. `setSpeed` resets the remainder: at speed 1, `update(0.6)` returns 0; after `setSpeed(-1)`, `update(1.2)` returns -1. At speed 1, `update(0.6)` returns 0; after `setSpeed(2)`, `update(0.4)` returns 0, with `remainder` 0.8 within 1e-9 after.
-17. `play()` on `createClock(2451545.0, 0)` leaves `state` `'Paused'`, and at speed 1, after `setSpeed(0)`, `update(2.5)` returns 0.
+17. `play()` on `createClock(2451545.0, 0)` leaves `state` `'Paused'`, and at speed 1, after `setSpeed(0)`, `update(2.5)` returns 0. Invalid input changes nothing: at speed 1, after `update(0.5)`, `update(NaN)`, `update(Infinity)` and `update(-1)` each return 0 and leave `n`, `jd`, `state` and `remainder` (0.5) as they were; `setSpeed(NaN)`, `setSpeed(Infinity)`, `jump(NaN)` and `jump(Infinity)` leave `speedStepsPerSecond`, `jd`, `n` and `remainder` (0.5) as they were; `createClock(NaN, 1)` and `createClock(2451545.0, NaN)` throw a `RangeError`.
 18. `parseDateText('2026-10-27 14:00')` returns 2461341.0833333333 (2461341 + 1/12) within 1e-9 d, and `formatDateText` of that Julian date returns exactly `'2026-10-27 14:00'`, the display text without `UTC`.
 19. `formatDateText(2440587.5416666665)` returns `'1970-01-01 01:00'`.
-20. `parseDateText` returns `null` for `'2026-10-27 14:00 UTC'`, `'2026-13-40 99:99'` and `''`.
+20. `parseDateText` returns `null` for `'2026-10-27 14:00 UTC'`, `'2026-13-40 99:99'`, `'2026-02-30 00:00'`, `'2027-02-29 00:00'` and `''`, and a number for `'2028-02-29 00:00'`.
 21. Handedness, a check that (x, z, -y) is a proper rotation under Three.js `Vector3.cross`: with map(x, y, z) = (x, z, -y), map(1, 0, 0) x map(0, 1, 0), computed with `Vector3.cross`, equals map(0, 0, 1), and map(0, 0, 1) = (0, 1, 0), each component compared with `===`, so -0 equals 0.
-22. File check: `grep -Fx 'Copyright (c) 2026 Linda Gustafsson' LICENSE` prints that line, and the rest of `LICENSE`, read against the MIT licence text published by the Open Source Initiative, matches it.
-23. File check: `grep -F '"license": "MIT"' package.json` prints the field.
-24. File check: `.github/workflows/deploy.yml` lists push to `main` and `workflow_dispatch` under `on:`, and `grep -nE 'npm (ci|run format:check|run typecheck|test|run build)' .github/workflows/deploy.yml` prints `npm ci`, `npm run format:check`, `npm run typecheck`, `npm test` and `npm run build`, in that order ([Flow](deploy.md#flow)).
+22. File check: `.github/workflows/deploy.yml` lists push to `main` and `workflow_dispatch` under `on:`, and `grep -nE 'npm (ci|run format:check|run typecheck|test|run build)' .github/workflows/deploy.yml` prints `npm ci`, `npm run format:check`, `npm run typecheck`, `npm test` and `npm run build`, in that order ([Flow](deploy.md#flow)).
 
 ### Phase 1 content
 
@@ -174,19 +172,12 @@ Unit tests, then file checks. In the unit tests, expected values are fixed numbe
 
 ## Invariants
 
-Hold in every phase:
-
-1. Core never imports Three.js or DOM.
-2. Core takes element data as published (AU, degrees) and converts inside. Its outputs are positions and lengths in km, directions as unit vectors, angles in degrees and Julian dates. Only the renderer scales.
-3. Sim time is a pure function of the start Julian date and the step counter.
-4. Every phase leaves format check, typecheck, tests and build green.
-
-Per phase, in addition:
+The [invariants](architecture.md#invariants) hold in every phase. Per phase, in addition:
 
 | # | Invariant |
 |---|---|
 | 0 | The clock advances in fixed 1 h steps; the same start Julian date and step counter give the same sim time. |
-| 0 | The clock (App) keeps the sim time within `JD_MIN`..`JD_MAX` from the core by the bound rules under [Time](architecture.md#time): when the whole steps of a frame reach a bound, the clock pauses. |
+| 0 | The clock (App) keeps the sim time within `JD_MIN`..`JD_MAX` from the core by the bound rules under [Time](architecture.md#time). |
 | 1 | The UI shows the range. |
 | 1 | Sun radius is 695,700 km in core and is scaled only in the renderer. |
 | 1 | Scale, zoom and focus constants live only in `src/config`. |
@@ -197,7 +188,7 @@ Per phase, in addition:
 
 Stop and return to the user if:
 
-- TypeScript 7 is incompatible with @types/three and TypeScript 6 also fails.
+- The typecheck fails in the declarations of @types/three after every fallback step, or in the declarations of any other package.
 - Node cannot be installed.
 - Phase 5 reaches the Horizons fetch without the user's approval.
 - A golden position deviates more than the JPL stated accuracy, for Mercury under [Mercury orbit](data.md#mercury-orbit).
@@ -211,8 +202,7 @@ Stop and return to the user if:
 
 ## Risks and unknowns
 
-- Node on the local machine ([Tooling](data.md#tooling)).
-- TypeScript 7.0.2 with @types/three 0.186.0, status under [Tooling](data.md#tooling).
+- The typecheck of @types/three, status under [Tooling](data.md#tooling).
 - Three.js handedness has no official sentence. The official docs say Y up and the camera looks along -Z. Right-handedness is derived from the r186 source ([data.md](data.md#tooling)); the phase 0 handedness test checks it for `Vector3.cross` only.
 - Mercury's W sine terms are omitted ([Constraints](architecture.md#goals-and-constraints)).
 - Sun differential rotation is not modelled.

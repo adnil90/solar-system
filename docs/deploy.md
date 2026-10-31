@@ -35,7 +35,7 @@ The repository is `solar-system`, deployed as a project page:
 
 | Item | Value |
 |---|---|
-| URL | `https://<github-user>.github.io/solar-system/` |
+| URL | `https://adnil90.github.io/solar-system/` |
 | Vite `base` | `'/solar-system/'` |
 | Visibility | public: GitHub Free requires it ([Plans and visibility](#plans-and-visibility)). The owning account uses GitHub Free (stated by the user) |
 
@@ -65,7 +65,7 @@ The Vite `base` must equal the repository name exactly, between slashes.
 | [actions/checkout](https://github.com/actions/checkout/releases) | v7.0.1 | v7 | VERIFIED |
 | [actions/setup-node](https://github.com/actions/setup-node/releases) | v7.1.0 | v7 | VERIFIED |
 
-The workflow uses configure-pages v6, upload-pages-artifact v5 and deploy-pages v5, the majors of the Vite sample and the latest releases (default).
+The workflow uses the majors in the table above, the majors of the Vite sample and the latest releases (default). The deploy-pages step has `id: deployment`, which the environment `url` reads.
 
 ## Node in CI
 
