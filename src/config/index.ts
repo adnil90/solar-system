@@ -1,0 +1,1 @@
+export const INITIAL_SPEED_STEPS_PER_S = 24;

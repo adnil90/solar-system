@@ -4,7 +4,7 @@ A 3D solar system for the web that steps one hour at a time. The Sun and the pla
 
 It is the groundwork for a space game and for showing the solar system to a child.
 
-Status: planning, no code yet
+Status: phase 0 (skeleton) done
 
 Licence: MIT
 
